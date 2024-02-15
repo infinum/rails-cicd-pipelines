@@ -1,0 +1,60 @@
+name: Send slack notification
+
+on:
+  workflow_call:
+    inputs:
+      outcome:
+        description: 'Result of the related operation (eg. success or failure)'
+        required: true
+        type: string
+      channel:
+        description: 'Name of the Slack channel to notify'
+        type: string
+        required: true
+      color:
+        description: 'Notification color (pass {{ job.status }} for automatic coloring or an RGB value)'
+        required: true
+        type: string
+      icon:
+        description: 'Notification icon (url)'
+        required: false
+        default: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'
+        type: string
+      title:
+        description: 'Notification title'
+        required: true
+        type: string
+      message:
+        description: 'Notification message (if ommited short commit message will be used)'
+        required: false
+        type: string
+
+    secrets:
+      slack_webhook:
+        required: true
+
+jobs:
+  notify:
+    name: Notify on Slack
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        if: inputs.message == ''
+        uses: actions/checkout@v2
+
+      - name: Capture commit message
+        id: commit
+        if: inputs.message == ''
+        run: echo "message=$(git log -1 --pretty=%B)" >> "$GITHUB_OUTPUT"
+
+      - name: Send notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_CHANNEL: ${{ inputs.channel }}
+          SLACK_WEBHOOK: ${{ secrets.slack_webhook }}
+          SLACK_USERNAME: 'GitHub Actions'
+          SLACK_COLOR: ${{ inputs.color }}
+          SLACK_ICON: ${{ inputs.icon }}
+          SLACK_MESSAGE: ${{ inputs.message || steps.commit.outputs.message }}
+          SLACK_TITLE: ${{ inputs.title }}
