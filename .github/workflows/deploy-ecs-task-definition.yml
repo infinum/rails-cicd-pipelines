@@ -1,0 +1,65 @@
+name: Deploy task definition to ECS service
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub Actions environment (eg. staging or production)
+        required: false
+        type: string
+
+      region:
+        required: true
+        type: string
+
+      cluster:
+        required: true
+        type: string
+
+      service:
+        required: true
+        type: string
+
+      path:
+        required: true
+        type: string
+
+      container:
+        required: true
+        type: string
+
+      image:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    name: Update task definition and update service
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_IAM_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_IAM_ACCESS_SECRET_KEY }}
+          aws-region: ${{ inputs.region }}
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: gen-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ inputs.path }}
+          image: ${{ inputs.image }}
+          container-name: ${{ inputs.container }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          cluster: ${{ inputs.cluster }}
+          service: ${{ inputs.service }}
+          task-definition: ${{ steps.gen-task-def.outputs.task-definition }}
+          wait-for-service-stability: true
