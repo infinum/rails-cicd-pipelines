@@ -8,11 +8,6 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
-      environment:
-        description: GitHub Actions environment (eg. staging or production)
-        required: false
-        type: string
-
       # Coordinate with the DevOps team. It should match the project's AWS region.
       region:
         description: 'AWS region (eg. eu-west-1)'
@@ -69,12 +64,16 @@ on:
         description: 'Override task container command (each command segment should be in a separate line)'
         required: false
         type: string
+    secrets:
+      AWS_IAM_ACCESS_KEY_ID:
+        required: true
+      AWS_IAM_ACCESS_KEY_ID:
+        required: true
 
 jobs:
   run-aws-task:
     name: Run AWS task
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     steps:
       - name: Check out code
         uses: actions/checkout@v2

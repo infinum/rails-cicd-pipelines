@@ -3,10 +3,6 @@ name: Docker build and push
 on:
   workflow_call:
     inputs:
-      environment:
-        description: GitHub Actions environment (eg. staging or production)
-        required: false
-        type: string
       aws_region:
         description: AWS region
         required: true
@@ -46,13 +42,17 @@ on:
         description: List of build-time variables
         required: false
         type: string
+    secrets:
+      AWS_IAM_ACCESS_KEY_ID:
+        required: true
+      AWS_IAM_ACCESS_KEY_ID:
+        required: true
 
 jobs:
   build:
     name: 'Build and push docker image'
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.timeout_minutes }}
-    environment: ${{ inputs.environment }}
     steps:
     - name: Check out code
       uses: actions/checkout@v3

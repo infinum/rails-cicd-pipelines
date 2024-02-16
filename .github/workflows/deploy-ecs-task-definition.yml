@@ -3,11 +3,6 @@ name: Deploy task definition to ECS service
 on:
   workflow_call:
     inputs:
-      environment:
-        description: GitHub Actions environment (eg. staging or production)
-        required: false
-        type: string
-
       region:
         required: true
         type: string
@@ -31,12 +26,16 @@ on:
       image:
         required: true
         type: string
+    secrets:
+      AWS_IAM_ACCESS_KEY_ID:
+        required: true
+      AWS_IAM_ACCESS_KEY_ID:
+        required: true
 
 jobs:
   deploy:
     name: Update task definition and update service
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     steps:
       - name: Check out code
         uses: actions/checkout@v2
