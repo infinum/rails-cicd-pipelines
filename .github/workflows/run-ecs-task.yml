@@ -1,0 +1,113 @@
+name: Run ECS task
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub Actions environment (eg. staging or production)
+        required: false
+        type: string
+
+      # Coordinate with the DevOps team. It should match the project's AWS region.
+      region:
+        description: 'AWS region (eg. eu-west-1)'
+        required: true
+        type: string
+
+      # Coordinate with the DevOps team. It should match the project's cluster name.
+      cluster:
+        description: 'Name of the ECS cluster where the application is deployed (eg. extra-production)'
+        required: true
+        type: string
+
+      path:
+        description: 'Task definition path'
+        required: true
+        type: string
+
+      image:
+        description: 'Image tag for the AWS task'
+        required: true
+        type: string
+
+      container:
+        description: 'Container name for the AWS task'
+        required: true
+        type: string
+
+      # Coordinate with the DevOps team.
+      # Example
+      # subnet_ids: |
+      #   sn-abc123
+      #   sn-def456
+      subnet_ids:
+        description: 'Subnet ids for the AWS task (each subnet id should be in a separate line)'
+        required: true
+        type: string
+
+      # Coordinate with the DevOps team.
+      # Example
+      # security_group_ids: |
+      #   sg-abc123
+      #   sg-def456
+      security_group_ids:
+        description: 'Security group ids for the AWS task (each security group id should be in a separate line)'
+        required: true
+        type: string
+
+      override_container:
+        description: 'Name of the task container to override (eg. backend)'
+        required: false
+        type: string
+
+      override_command:
+        description: 'Override task container command (each command segment should be in a separate line)'
+        required: false
+        type: string
+
+jobs:
+  run-aws-task:
+    name: Run AWS task
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_IAM_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_IAM_ACCESS_SECRET_KEY }}
+          aws-region: ${{ inputs.region }}
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: gen-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ inputs.path }}
+          image: ${{ inputs.image }}
+          container-name: ${{ inputs.container }}
+
+      - name: Register task definition
+        id: register-task-def
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.gen-task-def.outputs.task-definition }}
+
+      - name: Run task
+        id: run-task
+        uses: geekcell/github-action-aws-ecs-run-task@v3
+        with:
+          cluster: ${{ inputs.cluster }}
+          task-definition: ${{ steps.register-task-def.outputs.task-definition-arn }}
+          assign-public-ip: 'ENABLED'
+          subnet-ids: ${{ inputs.subnet_ids }}
+          security-group-ids: ${{ inputs.security_group_ids }}
+          override-container: ${{ inputs.override_container }}
+          override-container-command: ${{ inputs.override_command }}
