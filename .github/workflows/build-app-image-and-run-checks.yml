@@ -27,6 +27,16 @@ on:
         required: false
         type: string
 
+      # secret_mount_src:
+      #   description: 'Secret source path, relative to the repo root (eg. infra/ci/docker/application.yml)'
+      #   required: false
+      #   type: string
+
+      # secret_mount_dst:
+      #   description: 'Secret destination path in the application image (absolute, eg. /app/config/application.yml)'
+      #   required: false
+      #   type: string
+
 jobs:
   build_image:
     name: Build app image and run checks
