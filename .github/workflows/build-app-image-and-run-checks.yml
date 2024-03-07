@@ -77,9 +77,8 @@ jobs:
     services:
       postgres:
         image: postgres:${{ inputs.postgres_version }}
-        ports:
-          - 5432:5432
-        options: --name=postgres
+        env:
+          POSTGRES_PASSWORD: postgres
 
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +122,7 @@ jobs:
       - name: Test
         run: |
           docker run \
-            --env DATABASE_HOST=localhost \
+            --env DATABASE_HOST=postgres \
             --env DATABASE_USERNAME=postgres \
             --env DATABASE_PASSWORD=postgres \
             --network=host \
