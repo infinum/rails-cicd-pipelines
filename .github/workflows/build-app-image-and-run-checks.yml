@@ -78,6 +78,8 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +119,7 @@ jobs:
       - name: Test
         run: |
           docker run \
-            --env DATABASE_HOST=postgres \
+            --env DATABASE_HOST=localhost \
             --env DATABASE_USERNAME=postgres \
             --env DATABASE_PASSWORD=postgres \
             --network=host \
