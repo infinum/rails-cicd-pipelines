@@ -14,47 +14,53 @@ on:
     inputs:
       # See: https://github.com/docker-library/docs/blob/master/postgres/README.md#supported-tags-and-respective-dockerfile-links
       postgres_version:
-        description: 'Postgres version for running tests (eg. 13.6)'
+        description: Postgres version for running tests (eg. 13.6)
         required: true
         type: string
 
+      postgres_timeout_minutes:
+        description: Postgres service wait timeout
+        required: false
+        type: integer
+        default: 1
+
       # See: https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
       runner:
-        description: 'Set the runner for the workflow (eg. ubuntu-20.04)'
+        description: Set the runner for the workflow (eg. ubuntu-20.04)
         required: false
         type: string
         default: ubuntu-latest
 
       target:
-        description: 'Set the target build stage for the image (eg. test or deploy)'
+        description: Set the target build stage for the image (eg. test or deploy)
         required: false
         type: string
 
       context:
-        description: 'Docker context'
+        description: Docker context
         required: false
         type: string
         default: "."
 
       file:
-        description: 'Path to Dockerfile'
+        description: Path to Dockerfile
         required: false
         type: string
 
       build_args:
-        description: 'Docker build arguments'
+        description: Docker build arguments
         required: false
         type: string
 
       secret_mount_src:
-        description: 'Secret source path, relative to the repo root (eg. infra/ci/docker/application.yml)'
+        description: Secret source path, relative to the repo root (eg. infra/ci/docker/application.yml)
         required: false
         type: string
 
-      # secret_mount_dst:
-      #   description: 'Secret destination path in the application image (absolute, eg. /app/config/application.yml)'
-      #   required: false
-      #   type: string
+      secret_mount_dst:
+        description: Secret destination path in the application image, relative to the repo root (eg. config/application.yml)
+        required: false
+        type: string
 
 jobs:
   build_image:
@@ -97,7 +103,7 @@ jobs:
       - name: Lint
         run: |
           docker run \
-            --mount type=bind,src=$PWD/${{ inputs.secret_mount_src }},dst=/app/config/application.yml \
+            --mount type=bind,src=$PWD/${{ inputs.secret_mount_src }},dst=/app/${{ inputs.secret_mount_dst }} \
             app \
             bin/lint
 
@@ -105,6 +111,7 @@ jobs:
         run: docker run app bin/audit
 
       - name: Wait for Postgres to be ready
+        timeout-minutes: ${{ inputs.pg_timeout_minutes }}
         run: until docker exec postgres pg_isready; do sleep 1; done
 
       - name: Test
@@ -114,6 +121,6 @@ jobs:
             --env DATABASE_USERNAME=postgres \
             --env DATABASE_PASSWORD=postgres \
             --network=host \
-            --mount type=bind,src=$PWD/${{ inputs.secret_mount_src }},dst=/app/config/application.yml \
+            --mount type=bind,src=$PWD/${{ inputs.secret_mount_src }},dst=/app/${{ inputs.secret_mount_dst }} \
             app \
             bin/test
