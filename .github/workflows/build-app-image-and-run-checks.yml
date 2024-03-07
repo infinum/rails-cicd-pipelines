@@ -21,7 +21,7 @@ on:
       postgres_timeout_minutes:
         description: Postgres service timeout
         required: false
-        type: integer
+        type: number
         default: 1
 
       # See: https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
@@ -34,7 +34,7 @@ on:
       timeout_minutes:
         description: Workflow timeout
         required: false
-        type: integer
+        type: number
         default: 10
 
       target:
