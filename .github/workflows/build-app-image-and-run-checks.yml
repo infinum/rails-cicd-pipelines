@@ -46,10 +46,10 @@ on:
         required: false
         type: string
 
-      # secret_mount_src:
-      #   description: 'Secret source path, relative to the repo root (eg. infra/ci/docker/application.yml)'
-      #   required: false
-      #   type: string
+      secret_mount_src:
+        description: 'Secret source path, relative to the repo root (eg. infra/ci/docker/application.yml)'
+        required: false
+        type: string
 
       # secret_mount_dst:
       #   description: 'Secret destination path in the application image (absolute, eg. /app/config/application.yml)'
@@ -90,14 +90,14 @@ jobs:
           tags: app
           build-args: ${{ inputs.build_args }}
           secret-files: |
-            app_secrets=infra/ci/docker/application.yml
+            app_secrets=${{ inputs.secret_mount_src }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Lint
         run: |
           docker run \
-            --mount type=bind,src=$PWD/infra/ci/docker/application.yml,dst=/app/config/application.yml \
+            --mount type=bind,src=$PWD/${{ inputs.secret_mount_src }},dst=/app/config/application.yml \
             app \
             bin/lint
 
@@ -114,6 +114,6 @@ jobs:
             --env DATABASE_USERNAME=postgres \
             --env DATABASE_PASSWORD=postgres \
             --network=host \
-            --mount type=bind,src=$PWD/infra/ci/docker/application.yml,dst=/app/config/application.yml \
+            --mount type=bind,src=$PWD/${{ inputs.secret_mount_src }},dst=/app/config/application.yml \
             app \
             bin/test
