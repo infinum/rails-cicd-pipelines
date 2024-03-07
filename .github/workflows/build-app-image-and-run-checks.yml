@@ -1,10 +1,9 @@
-name: Build app image and run checks
-description: |
-  This workflow depends on project to have following scripts
-  `bin/audit`
-  `bin/lint`
-  `bin/test`
+# This reusable workflow depends on project to have following scripts
+#   bin/audit
+#   bin/lint
+#   bin/test
 
+name: Build app image and run checks
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
