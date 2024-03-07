@@ -1,4 +1,9 @@
 name: Build app image and run checks
+description: |
+  This workflow depends on project to have following scripts
+  `bin/audit`
+  `bin/lint`
+  `bin/test`
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,9 +26,24 @@ on:
         type: string
         default: ubuntu-latest
 
-      # See: https://docs.docker.com/engine/reference/commandline/image_build/#target
-      image_target:
+      target:
         description: 'Set the target build stage for the image (eg. test or deploy)'
+        required: false
+        type: string
+
+      context:
+        description: 'Docker context'
+        required: false
+        type: string
+        default: "."
+
+      file:
+        description: 'Path to Dockerfile'
+        required: false
+        type: string
+
+      build_args:
+        description: 'Docker build arguments'
         required: false
         type: string
 
@@ -54,13 +74,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
 
-      - name: Detect app env
-        id: app-env
-        env:
-          POSTGRES_VERSION: ${{ inputs.postgres_version }}
-        run: infra/ci/detect_app_env
+      - uses: ruby/setup-ruby@v1
 
       - name: Set up Docker Buildx
         id: buildx
@@ -69,18 +84,14 @@ jobs:
       - name: Build app image
         uses: docker/build-push-action@v5
         with:
-          context: .
           builder: ${{ steps.buildx.outputs.name }}
-          file: Dockerfile
-          target: ${{ inputs.image_target }}
+          context: ${{ inputs.context }}
+          file: ${{ inputs.file }}
+          target: ${{ inputs.target }}
           push: false
           load: true
           tags: app
-          build-args: |
-            RUBY_VERSION=${{ steps.app-env.outputs.ruby_version }}
-            BUNDLER_VERSION=${{ steps.app-env.outputs.bundler_version }}
-            NODE_MAJOR=${{ steps.app-env.outputs.node_major }}
-            YARN_VERSION=${{ steps.app-env.outputs.yarn_version }}
+          build-args: ${{ inputs.build_args }}
           secret-files: |
             app_secrets=infra/ci/docker/application.yml
           cache-from: type=gha
@@ -105,7 +116,7 @@ jobs:
             --env DATABASE_HOST=localhost \
             --env DATABASE_USERNAME=postgres \
             --env DATABASE_PASSWORD=postgres \
-            --network="host" \
+            --network=host \
             --mount type=bind,src=$PWD/infra/ci/docker/application.yml,dst=/app/config/application.yml \
             app \
             bin/test
