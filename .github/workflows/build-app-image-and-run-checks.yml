@@ -18,12 +18,6 @@ on:
         required: true
         type: string
 
-      postgres_timeout_minutes:
-        description: Postgres service timeout
-        required: false
-        type: number
-        default: 1
-
       # See: https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
       runner:
         description: Set the runner for the workflow (eg. ubuntu-20.04)
@@ -79,6 +73,11 @@ jobs:
         image: postgres:${{ inputs.postgres_version }}
         env:
           POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -114,10 +113,6 @@ jobs:
 
       - name: Audit
         run: docker run app bin/audit
-
-      - name: Wait for Postgres to be ready
-        timeout-minutes: ${{ inputs.pg_timeout_minutes }}
-        run: until docker exec postgres pg_isready; do sleep 1; done
 
       - name: Test
         run: |
