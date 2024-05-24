@@ -25,6 +25,16 @@ on:
         type: string
         default: ubuntu-latest
 
+      aws_region:
+        description: AWS region
+        required: false
+        type: string
+
+      environment:
+        description: GitHub environment
+        required: false
+        type: string
+
       timeout_minutes:
         description: Workflow timeout
         required: false
@@ -52,13 +62,23 @@ on:
         required: false
         type: string
 
-      secret_mount_src:
-        description: Secret source path, relative to the repo root (eg. infra/ci/docker/application.yml)
+      param_store:
+        description: Parameter store (supported options are aws-ssm, repo-file)
+        required: true
+        type: string
+
+      aws_ssm_param_path:
+        description: The hierarchy for the parameters
         required: false
         type: string
 
-      secret_mount_dst:
-        description: Secret destination path in the application image, relative to the repo root (eg. config/application.yml)
+      param_mount_src:
+        description: Params source path
+        required: false
+        type: string
+
+      param_mount_dst:
+        description: Params destination path in the application image, relative to the repo root (eg. config/application.yml)
         required: false
         type: string
 
@@ -66,6 +86,7 @@ jobs:
   build_image:
     name: Build app image and run checks
     runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
     timeout-minutes: ${{ inputs.timeout_minutes }}
 
     services:
@@ -88,6 +109,22 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Configure AWS credentials
+        if: ${{ inputs.param_store == 'aws-ssm' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Load AWS SSM parameters
+        if: ${{ inputs.param_store == 'aws-ssm' }}
+        id: pull-aws-ssm-params
+        uses: infinum/param-store-aws-ssm@main
+        with:
+          path: ${{ inputs.aws_ssm_param_path }}
+          file: ${{ inputs.param_mount_src }}
+
       - name: Build app image
         uses: docker/build-push-action@v5
         with:
@@ -100,14 +137,14 @@ jobs:
           tags: app
           build-args: ${{ inputs.build_args }}
           secret-files: |
-            app_secrets=${{ inputs.secret_mount_src }}
+            app_secrets=${{ inputs.param_mount_src }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Lint
         run: |
           docker run \
-            --mount type=bind,src=$PWD/${{ inputs.secret_mount_src }},dst=/app/${{ inputs.secret_mount_dst }} \
+            --mount type=bind,src=$PWD/${{ inputs.param_mount_src }},dst=/app/${{ inputs.param_mount_dst }} \
             app \
             bin/lint
 
@@ -121,6 +158,6 @@ jobs:
             --env DATABASE_USERNAME=postgres \
             --env DATABASE_PASSWORD=postgres \
             --network=host \
-            --mount type=bind,src=$PWD/${{ inputs.secret_mount_src }},dst=/app/${{ inputs.secret_mount_dst }} \
+            --mount type=bind,src=$PWD/${{ inputs.param_mount_src }},dst=/app/${{ inputs.param_mount_dst }} \
             app \
             bin/test
