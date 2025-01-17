@@ -1,0 +1,8 @@
+{
+  "name": "rails-cicd-pipeline-templates",
+  "version": "0.0.1",
+  "description": "Repository for Rails CI/CD pipeline templates",
+  "engines": {
+    "node": ">= 20"
+  }
+}
