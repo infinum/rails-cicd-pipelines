@@ -3,6 +3,6 @@
   "version": "0.0.1",
   "description": "Repository for Rails CI/CD pipeline templates",
   "engines": {
-    "node": ">= 20"
+    "node": "20.12.x"
   }
 }
