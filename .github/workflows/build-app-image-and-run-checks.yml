@@ -111,7 +111,7 @@ jobs:
 
     services:
       postgres:
-        image: ${{ inputs.postgres_version && format('postres:{0}', inputs.postgres_version) }}
+        image: ${{ inputs.postgres_version && format('postgres:{0}', inputs.postgres_version) }}
         env:
           POSTGRES_USER: ${{ inputs.postgres_user }}
           POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
