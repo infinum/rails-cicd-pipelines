@@ -1,7 +1,7 @@
 name: Release Rails CI/CD pipeline templates
 
 on:
-  push:
+  workflow_call:
 
 jobs:
   release:
