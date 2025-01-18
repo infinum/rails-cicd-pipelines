@@ -17,8 +17,13 @@ on:
         required: false
         type: string
 
-      postgres_env:
-        description: Postgres environment variables
+      postgres_user:
+        description: Postgres user
+        required: false
+        type: string
+
+      postgres_password:
+        description: Postgres password
         required: false
         type: string
 
@@ -28,8 +33,8 @@ on:
         required: false
         type: string
 
-      mysql_env:
-        description: MySQL environment variables
+      mysql_root_password:
+        description: MySQL root user password
         required: false
         type: string
 
@@ -107,7 +112,9 @@ jobs:
     services:
       postgres:
         image: ${{ inputs.postgres_version && format('postres:{0}', inputs.postgres_version) }}
-        env:  ${{ inputs.postgres_env }}
+        env:
+          POSTGRES_USER: ${{ inputs.postgres_user }}
+          POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -118,7 +125,8 @@ jobs:
 
       mysql:
         image: ${{ inputs.mysql_version && format('mysql:{0}', inputs.mysql_version) }}
-        env: ${{ inputs.mysql_env }}
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ inputs.mysql_root_password }}
         options: >-
           --health-cmd="mysqladmin ping"
           --health-interval=10s
