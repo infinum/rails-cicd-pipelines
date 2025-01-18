@@ -1,7 +1,6 @@
 # This reusable workflow depends on project to have following scripts
 #   bin/audit
 #   bin/lint
-#   bin/test
 
 name: Build app image and run checks
 concurrency:
@@ -12,13 +11,28 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
-      # See: https://github.com/docker-library/docs/blob/master/postgres/README.md#supported-tags-and-respective-dockerfile-links
+      # See: https://hub.docker.com/_/postgres
       postgres_version:
         description: Postgres version for running tests (eg. 13.6)
-        required: true
+        required: false
         type: string
 
-      # See: https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
+      postgres_env:
+        description: Postgres environment variables
+        required: false
+        type: string
+
+      # See: https://hub.docker.com/_/mysql
+      mysql_version:
+        description: MySQL version for running tests (eg. 9.1). Use root user.
+        required: false
+        type: string
+
+      mysql_env:
+        description: MySQL environment variables
+        required: false
+        type: string
+
       runner:
         description: Set the runner for the workflow (eg. ubuntu-20.04)
         required: false
@@ -62,6 +76,28 @@ on:
         required: false
         type: string
 
+      # Examples:
+      #   Basic docker command
+      #     docker run app bin/test
+      #   Docker with database connection
+      #     docker run \
+      #       --env DB_HOST=127.0.0.1 \
+      #       --env DB_PORT=3306 \
+      #       --env DB_USERNAME=root \
+      #       --env DB_PASSWORD=password \
+      #       --network=host \
+      #       app \
+      #       bin/test
+      #   Docker with bind mounts
+      #     docker run \
+      #       --mount type=bind,src="$(pwd)"/infra/ci/docker/.env,dst=/app/.env \
+      #       app \
+      #       bin/test
+      test_command:
+        description: Command for running the test suite
+        required: true
+        type: string
+
 jobs:
   build_image:
     name: Build app image and run checks
@@ -70,9 +106,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:${{ inputs.postgres_version }}
-        env:
-          POSTGRES_PASSWORD: postgres
+        image: ${{ inputs.postgres_version && format('postres:{0}', inputs.postgres_version) }}
+        env:  ${{ inputs.postgres_env }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -80,6 +115,17 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+
+      mysql:
+        image: ${{ inputs.mysql_version && format('mysql:{0}', inputs.mysql_version) }}
+        env: ${{ inputs.mysql_env }}
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 3306:3306
 
     steps:
       - uses: actions/checkout@v4
@@ -115,12 +161,5 @@ jobs:
         run: docker run app bin/audit
 
       - name: Test
-        run: |
-          docker run \
-            --env DATABASE_HOST=localhost \
-            --env DATABASE_USERNAME=postgres \
-            --env DATABASE_PASSWORD=postgres \
-            --network=host \
-            --mount type=bind,src=$PWD/${{ inputs.secret_mount_src }},dst=/app/${{ inputs.secret_mount_dst }} \
-            app \
-            bin/test
+        if: ${{ inputs.test_command }}
+        run: ${{ inputs.test_command }}
