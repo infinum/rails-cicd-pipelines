@@ -100,7 +100,7 @@ on:
       #       bin/test
       test_command:
         description: Command for running the test suite
-        required: true
+        required: false
         type: string
 
 jobs:
