@@ -18,3 +18,15 @@ jobs:
       - run: make release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify:
+    name: Send Slack notification
+    uses: infinum/devops-pipelines/.github/workflows/slack-notification.yml@v2.1.1
+    needs: release
+    if: ${{ always() }}
+    with:
+      outcome: ${{ needs.release.result }}
+      channel: rails-apps-notifications
+      color: ${{ needs.release.result }}
+      title: "Rails CI/CD pipeline released"
+    secrets: inherit
