@@ -50,34 +50,34 @@ on:
         type: number
         default: 10
 
-      target:
+      image_target:
         description: Set the target build stage for the image (eg. test or deploy)
         required: false
         type: string
 
-      context:
+      image_context:
         description: Docker context
         required: false
         type: string
         default: "."
 
-      file:
+      image_dockerfile:
         description: Path to Dockerfile
         required: false
         type: string
 
-      build_args:
+      image_tags:
+        description: Docker image tags
+        required: false
+        type: string
+
+      image_build_args:
         description: Docker build arguments
         required: false
         type: string
 
-      secret_mount_src:
-        description: Secret source path, relative to the repo root (eg. infra/ci/docker/application.yml)
-        required: false
-        type: string
-
-      secret_mount_dst:
-        description: Secret destination path in the application image, relative to the repo root (eg. config/application.yml)
+      image_secret_files:
+        description: Docker image build secret files
         required: false
         type: string
 
@@ -146,15 +146,14 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ inputs.context }}
-          file: ${{ inputs.file }}
-          target: ${{ inputs.target }}
+          context: ${{ inputs.image_context }}
+          file: ${{ inputs.image_dockerfile }}
+          target: ${{ inputs.image_target }}
           push: false
           load: true
-          tags: app
-          build-args: ${{ inputs.build_args }}
-          secret-files: |
-            app_secrets=${{ inputs.secret_mount_src }}
+          tags: ${{ inputs.image_tags }}
+          build-args: ${{ inputs.image_build_args }}
+          secret-files: ${{ inputs.image_secret_files }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
