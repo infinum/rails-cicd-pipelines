@@ -1,12 +1,21 @@
 name: Build app image and run checks
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ inputs.concurrency_group == '' && format('{0}-{1}', github.workflow, github.ref) || inputs.concurrency_group }}
+  cancel-in-progress: ${{ inputs.concurrency_cancel_in_progress }}
 
 on:
   workflow_dispatch:
   workflow_call:
     inputs:
+      concurrency_group:
+        required: false
+        type: string
+
+      concurrency_cancel_in_progress:
+        required: false
+        type: boolean
+        default: true
+
       # See: https://hub.docker.com/_/postgres
       postgres_version:
         description: Postgres version for running tests (eg. 13.6)
