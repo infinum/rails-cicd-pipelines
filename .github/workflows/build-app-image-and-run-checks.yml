@@ -136,6 +136,7 @@ jobs:
           --health-retries=5
         ports:
           - 3306:3306
+          
       redis:
         image: ${{ inputs.redis_image && format('redis:{0}', inputs.redis_image) }}
         ports:
