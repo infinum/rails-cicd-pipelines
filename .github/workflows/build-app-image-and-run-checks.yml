@@ -4,6 +4,11 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
+      checkout_ref:        
+        description: Branch to check out
+        required: false
+        type: string
+
       # See: https://hub.docker.com/_/postgres
       postgres_version:
         description: Postgres version for running tests (eg. 13.6)
@@ -145,7 +150,11 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref }}
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         id: buildx
