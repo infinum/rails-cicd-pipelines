@@ -106,6 +106,13 @@ on:
         description: Command for running the checks
         required: true
         type: string
+      
+    # If aws access is needed    
+    secrets:                 
+      AWS_ACCESS_KEY_ID:
+        required: false      
+      AWS_SECRET_ACCESS_KEY:
+        required: false        
 
 jobs:
   build_image:
@@ -177,3 +184,6 @@ jobs:
 
       - name: Run CI checks
         run: ${{ inputs.checks_command }}
+        env: 
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
