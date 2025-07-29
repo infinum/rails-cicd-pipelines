@@ -6,7 +6,13 @@ on:
     inputs:
       # See: https://hub.docker.com/_/postgres
       postgres_version:
-        description: Postgres version for running tests (eg. 13.6)
+        description: Postgres version (eg. 13.6)
+        required: false
+        type: string
+
+      # See: https://hub.docker.com/r/postgis/postgis
+      postgis_version:
+        description: Postgis version (eg. 17-3.5)
         required: false
         type: string
 
@@ -21,14 +27,14 @@ on:
         type: string
 
       redis_image:
-        description: Redis version for running tests (eg. 6.2)
+        description: Redis version (eg. 6.2)
         required: false
         type: string
-        default: ''        
+        default: ''
 
       # See: https://hub.docker.com/_/mysql
       mysql_version:
-        description: MySQL version for running tests (eg. 9.1). Use root user.
+        description: MySQL version (eg. 9.1). Use root user.
         required: false
         type: string
 
@@ -122,6 +128,19 @@ jobs:
         ports:
           - 5432:5432
 
+      postgis:
+        image: ${{ inputs.postgis_version && format('postgis:{0}', inputs.postgis_version) }}
+        env:
+          POSTGRES_USER: ${{ inputs.postgres_user }}
+          POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5433:5432
+
       mysql:
         image: ${{ inputs.mysql_version && format('mysql:{0}', inputs.mysql_version) }}
         env:
@@ -133,7 +152,7 @@ jobs:
           --health-retries=5
         ports:
           - 3306:3306
-          
+
       redis:
         image: ${{ inputs.redis_image && format('redis:{0}', inputs.redis_image) }}
         ports:
