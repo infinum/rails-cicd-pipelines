@@ -10,11 +10,23 @@ on:
         required: false
         type: string
 
+      postgres_port:
+        description: Postgres host port (eg. 5432)
+        required: false
+        type: string
+        default: 5432
+
       # See: https://hub.docker.com/r/postgis/postgis
       postgis_version:
         description: Postgis version (eg. 17-3.5)
         required: false
         type: string
+
+      postgis_port:
+        description: Postgis host port (eg. 5433)
+        required: false
+        type: number
+        default: 5433
 
       postgres_user:
         description: Postgres user
@@ -126,7 +138,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5432:5432
+          - ${{ inputs.postgres_host_port }}:5432
 
       postgis:
         image: ${{ inputs.postgis_version && format('postgis:{0}', inputs.postgis_version) }}
@@ -139,7 +151,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5433:5432
+          - ${{ inputs.postgres_host_port }}:5432
 
       mysql:
         image: ${{ inputs.mysql_version && format('mysql:{0}', inputs.mysql_version) }}
