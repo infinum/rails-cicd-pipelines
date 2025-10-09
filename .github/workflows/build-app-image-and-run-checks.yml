@@ -86,7 +86,7 @@ on:
         type: string
 
       aws_role_to_assume:
-        description: Which role will be assumed for AWS authentication
+        description: Role to be assumed for AWS authentication
         required: false
         type: string
 
