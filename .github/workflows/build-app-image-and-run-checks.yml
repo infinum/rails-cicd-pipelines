@@ -24,7 +24,7 @@ on:
         description: Redis version for running tests (eg. 6.2)
         required: false
         type: string
-        default: ''        
+        default: ''
 
       # See: https://hub.docker.com/_/mysql
       mysql_version:
@@ -90,6 +90,11 @@ on:
         required: false
         type: string
 
+      buildx_platforms:
+        description: List of additional platforms for Docker Buildx
+        required: false
+        type: string
+
       # Command examples:
       #   Basic Docker command
       #     docker run app bin/ci-checks
@@ -143,7 +148,7 @@ jobs:
           --health-retries=5
         ports:
           - 3306:3306
-          
+
       redis:
         image: ${{ inputs.redis_image && format('redis:{0}', inputs.redis_image) }}
         ports:
@@ -167,6 +172,8 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          platforms: ${{ inputs.buildx_platforms }}
 
       - name: Build app image
         uses: docker/build-push-action@v6
