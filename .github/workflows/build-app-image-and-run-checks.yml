@@ -80,6 +80,16 @@ on:
         required: false
         type: string
 
+      aws_region:
+        description: AWS region for assuming a role
+        required: false
+        type: string
+
+      aws_role_to_assume:
+        description: Role to be assumed for AWS authentication
+        required: false
+        type: string
+
       # Command examples:
       #   Basic Docker command
       #     docker run app bin/ci-checks
@@ -145,7 +155,14 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Configure AWS credentials
+        if: ${{ inputs.aws_role_to_assume }}
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: ${{ inputs.aws_region }}
+          role-to-assume: ${{ inputs.aws_role_to_assume }}
 
       - name: Set up Docker Buildx
         id: buildx
