@@ -91,7 +91,7 @@ on:
         type: string
 
       buildx_platforms:
-        description: List of additional platforms for Docker Buildx
+        description: List of the preferred platforms for Docker Buildx
         required: false
         type: string
 
