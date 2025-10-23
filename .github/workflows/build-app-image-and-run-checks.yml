@@ -58,7 +58,7 @@ on:
         description: Docker context
         required: false
         type: string
-        default: "."
+        default: '.'
 
       image_dockerfile:
         description: Path to Dockerfile
@@ -92,6 +92,11 @@ on:
 
       buildx_platforms:
         description: List of the preferred platforms for Docker Buildx
+        required: false
+        type: string
+
+      selenium_version:
+        description: Selenium version
         required: false
         type: string
 
@@ -158,6 +163,11 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+      selenium:
+        image: ${{ inputs.selenium_version && format('selenium/standalone-chrome:{0}', inputs.selenium_version) }}
+        ports:
+          - 4444:4444
 
     steps:
       - uses: actions/checkout@v5
