@@ -1,4 +1,4 @@
-name: Build app image and run checks
+name: Build app image and run command
 
 on:
   workflow_dispatch:
@@ -117,9 +117,22 @@ on:
       #       --mount type=bind,src="$(pwd)"/.sample.env,dst=/app/.env \
       #       app \
       #       bin/ci-checsk
-      checks_command:
-        description: Command for running the checks
+      run_command:
+        description: Command to run, e.g. your CI suite
         required: true
+        type: string
+
+      artifact_name:
+        description: Name of the artifact to upload. Defaults to 'artifact' if not provided.
+        required: false
+        type: string
+        default: artifact
+
+      artifact_path:
+        description: |
+          Path to the artifact to upload. If not provided no artifacts will be uploaded.
+          Same as the path argument in actions/upload-artifact@v4 (check docs for more info).
+        required: false
         type: string
 
 jobs:
@@ -200,5 +213,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Run CI checks
-        run: ${{ inputs.checks_command }}
+      - name: Run specified command
+        run: ${{ inputs.run_command }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: ${{ inputs.artifact_path }}
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifact_path }}
