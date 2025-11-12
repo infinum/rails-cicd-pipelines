@@ -135,6 +135,14 @@ on:
         required: false
         type: string
 
+      git_ref:
+        description: |
+          Git reference to use for the build. Defaults to GITHUB_SHA of the event that triggered the workflow.
+          If using `push` or `workflow_dispatch` then you do not have to pass it as the correct revision is checked out.
+          Useful for other events like `workflow_run`, see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+        required: false
+        type: string
+
 jobs:
   build_image:
     name: Build app image and run checks
@@ -184,6 +192,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.git_ref }}
 
       - name: Configure AWS credentials
         if: ${{ inputs.aws_role_to_assume }}
