@@ -1,0 +1,15 @@
+name: Build
+
+on:
+  pull_request:
+
+jobs:
+   build-test-image-and-run-checks:
+    name: Build test image and run checks
+    uses: infinum/rails-cicd-pipelines/.github/workflows/build-app-image-and-run-command.yml@v0.5.1
+    with:
+      image_target: base
+      image_tags: rails-cicd-pipelines
+      run_command: |
+        docker run rails-cicd-pipelines \
+          git log --oneline
