@@ -1,0 +1,240 @@
+name: Build app image and run command
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      # See: https://hub.docker.com/_/postgres
+      postgres_version:
+        description: Postgres version for running tests (eg. 13.6)
+        required: false
+        type: string
+
+      postgres_user:
+        description: Postgres user
+        required: false
+        type: string
+
+      postgres_password:
+        description: Postgres password
+        required: false
+        type: string
+
+      redis_image:
+        description: Redis version for running tests (eg. 6.2)
+        required: false
+        type: string
+        default: ''
+
+      # See: https://hub.docker.com/_/mysql
+      mysql_version:
+        description: MySQL version for running tests (eg. 9.1). Use root user.
+        required: false
+        type: string
+
+      mysql_root_password:
+        description: MySQL root user password
+        required: false
+        type: string
+
+      runner:
+        description: Set the runner for the workflow (eg. ubuntu-20.04)
+        required: false
+        type: string
+        default: ubuntu-latest
+
+      timeout_minutes:
+        description: Workflow timeout
+        required: false
+        type: number
+        default: 10
+
+      image_target:
+        description: Set the target build stage for the image (eg. test or deploy)
+        required: false
+        type: string
+
+      image_context:
+        description: Docker context
+        required: false
+        type: string
+        default: '.'
+
+      image_dockerfile:
+        description: Path to Dockerfile
+        required: false
+        type: string
+
+      image_tags:
+        description: Docker image tags
+        required: false
+        type: string
+
+      image_build_args:
+        description: Docker build arguments
+        required: false
+        type: string
+
+      image_secret_files:
+        description: Docker image build secret files
+        required: false
+        type: string
+
+      aws_region:
+        description: AWS region for assuming a role
+        required: false
+        type: string
+
+      aws_role_to_assume:
+        description: Role to be assumed for AWS authentication
+        required: false
+        type: string
+
+      buildx_platforms:
+        description: List of the preferred platforms for Docker Buildx
+        required: false
+        type: string
+
+      selenium_version:
+        description: Selenium version
+        required: false
+        type: string
+
+      # Command examples:
+      #   Basic Docker command
+      #     docker run app bin/ci-checks
+      #   Docker with database connection
+      #     docker run \
+      #       --env DB_HOST=127.0.0.1 \
+      #       --env DB_PORT=5432 \
+      #       --env DB_USERNAME=deploy \
+      #       --env DB_PASSWORD=password \
+      #       --network=host \
+      #       app \
+      #       bin/ci-checks
+      #   Docker with bind mounts
+      #     docker run \
+      #       --mount type=bind,src="$(pwd)"/.sample.env,dst=/app/.env \
+      #       app \
+      #       bin/ci-checsk
+      run_command:
+        description: Command to run, e.g. your CI suite
+        required: true
+        type: string
+
+      artifact_name:
+        description: Name of the artifact to upload. Defaults to 'artifact' if not provided.
+        required: false
+        type: string
+        default: artifact
+
+      artifact_path:
+        description: |
+          Path to the artifact to upload. If not provided no artifacts will be uploaded.
+          Same as the path argument in actions/upload-artifact@v4 (check docs for more info).
+        required: false
+        type: string
+
+      git_ref:
+        description: |
+          Git reference to use for the build. Defaults to GITHUB_SHA of the event that triggered the workflow.
+          If using `push` or `workflow_dispatch` then you do not have to pass it as the correct revision is checked out.
+          Useful for other events like `workflow_run`, see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+        required: false
+        type: string
+      # See: https://github.com/actions/checkout
+      checkout_fetch_depth:
+        description: Number of commits to fetch. 0 indicates all history for all branches and tags.
+        type: number
+        required: false
+
+jobs:
+  build_image:
+    name: Build app image and run checks
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+
+    services:
+      postgres:
+        image: ${{ inputs.postgres_version && format('postgres:{0}', inputs.postgres_version) }}
+        env:
+          POSTGRES_USER: ${{ inputs.postgres_user }}
+          POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      mysql:
+        image: ${{ inputs.mysql_version && format('mysql:{0}', inputs.mysql_version) }}
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ inputs.mysql_root_password }}
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 3306:3306
+
+      redis:
+        image: ${{ inputs.redis_image && format('redis:{0}', inputs.redis_image) }}
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      selenium:
+        image: ${{ inputs.selenium_version && format('selenium/standalone-chrome:{0}', inputs.selenium_version) }}
+        ports:
+          - 4444:4444
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.git_ref }}
+          fetch-depth: ${{ inputs.checkout_fetch_depth }}
+
+      - name: Configure AWS credentials
+        if: ${{ inputs.aws_role_to_assume }}
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: ${{ inputs.aws_region }}
+          role-to-assume: ${{ inputs.aws_role_to_assume }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: ${{ inputs.buildx_platforms }}
+
+      - name: Build app image
+        uses: docker/build-push-action@v6
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ inputs.image_context }}
+          file: ${{ inputs.image_dockerfile }}
+          target: ${{ inputs.image_target }}
+          push: false
+          load: true
+          tags: ${{ inputs.image_tags }}
+          build-args: ${{ inputs.image_build_args }}
+          secret-files: ${{ inputs.image_secret_files }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run specified command
+        run: ${{ inputs.run_command }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: ${{ inputs.artifact_path }}
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifact_path }}
