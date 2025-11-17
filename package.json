@@ -3,9 +3,11 @@
   "version": "0.0.1",
   "description": "Repository for Rails CI/CD pipeline templates",
   "engines": {
-    "node": "20.12.x"
+    "node": "24.11.x"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/github": "^11.0.1",
     "conventional-changelog-conventionalcommits": "^8.0.0",

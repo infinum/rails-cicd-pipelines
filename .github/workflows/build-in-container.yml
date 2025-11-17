@@ -1,0 +1,16 @@
+name: Build
+
+on:
+  pull_request:
+
+jobs:
+   build-test-image-and-run-checks:
+    name: Build test image and run checks
+    uses: ./.github/workflows/build-app-image-and-run-command.yml
+    with:
+      checkout_fetch_depth: 0
+      image_target: base
+      image_tags: rails-cicd-pipelines
+      run_command: |
+        docker run rails-cicd-pipelines \
+          npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
