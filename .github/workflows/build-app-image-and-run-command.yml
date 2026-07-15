@@ -177,7 +177,7 @@ jobs:
           ref: ${{ inputs.git_ref }}
 
       - name: Build app image
-        uses: ./.github/actions/build-app-image
+        uses: infinum/rails-cicd-pipelines/.github/actions/build-app-image@feature/parallel-ci
         with:
           image_context: ${{ inputs.image_context }}
           image_dockerfile: ${{ inputs.image_dockerfile }}

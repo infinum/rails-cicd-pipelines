@@ -190,7 +190,7 @@ jobs:
           ref: ${{ inputs.git_ref }}
 
       - name: Load app image
-        uses: ./.github/actions/load-app-image
+        uses: infinum/rails-cicd-pipelines/.github/actions/load-app-image@feature/parallel-ci
         with:
           image_artifact_name: ${{ inputs.image_artifact_name }}
           image_context: ${{ inputs.image_context }}
