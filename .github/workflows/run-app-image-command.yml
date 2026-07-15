@@ -1,11 +1,11 @@
-name: Build app image and run command
+name: Run app image command
 
 on:
   workflow_dispatch:
   workflow_call:
     inputs:
       postgres_version:
-        description: Postgres version for running tests (eg. 13.6)
+        description: Postgres version for running tests (eg. 17.5)
         required: false
         type: string
 
@@ -20,7 +20,7 @@ on:
         type: string
 
       redis_image:
-        description: Redis version for running tests (eg. 6.2)
+        description: Redis version for running tests (eg. 7.2)
         required: false
         type: string
         default: ''
@@ -35,8 +35,13 @@ on:
         required: false
         type: string
 
+      selenium_version:
+        description: Selenium version
+        required: false
+        type: string
+
       runner:
-        description: Set the runner for the workflow (eg. ubuntu-20.04)
+        description: Set the runner for the workflow (eg. ubuntu-latest)
         required: false
         type: string
         default: ubuntu-latest
@@ -45,88 +50,96 @@ on:
         description: Workflow timeout
         required: false
         type: number
-        default: 10
+        default: 30
+
+      image_artifact_name:
+        description: Artifact name produced by build-app-image
+        required: false
+        type: string
+        default: ''
 
       image_target:
-        description: Set the target build stage for the image (eg. test or deploy)
+        description: Docker build target when rebuilding from cache instead of loading an artifact
         required: false
         type: string
 
       image_context:
-        description: Docker context
+        description: Docker context when rebuilding from cache
         required: false
         type: string
         default: '.'
 
       image_dockerfile:
-        description: Path to Dockerfile
+        description: Path to Dockerfile when rebuilding from cache
         required: false
         type: string
 
       image_tags:
-        description: Docker image tags
+        description: Docker image tags when rebuilding from cache
         required: false
         type: string
 
       image_build_args:
-        description: Docker build arguments
+        description: Docker build arguments when rebuilding from cache
         required: false
         type: string
 
       image_secret_files:
-        description: Docker image build secret files
+        description: Docker image build secret files when rebuilding from cache
         required: false
         type: string
 
       aws_region:
-        description: AWS region for assuming a role
+        description: AWS region for assuming a role when rebuilding from cache
         required: false
         type: string
 
       aws_role_to_assume:
-        description: Role to be assumed for AWS authentication
+        description: Role to be assumed for AWS authentication when rebuilding from cache
         required: false
         type: string
 
       buildx_platforms:
-        description: List of the preferred platforms for Docker Buildx
+        description: List of the preferred platforms for Docker Buildx when rebuilding from cache
         required: false
         type: string
 
-      selenium_version:
-        description: Selenium version
+      download_artifact_name:
+        description: Artifact to download before running the command
         required: false
         type: string
+        default: ''
+
+      download_artifact_path:
+        description: Destination path for the downloaded artifact
+        required: false
+        type: string
+        default: '.'
 
       run_command:
-        description: Command to run, e.g. your CI suite
+        description: Command to run after the image is loaded
         required: true
         type: string
 
       artifact_name:
-        description: Name of the artifact to upload. Defaults to 'artifact' if not provided.
+        description: Name of the artifact to upload after the command runs
         required: false
         type: string
         default: artifact
 
       artifact_path:
-        description: |
-          Path to the artifact to upload. If not provided no artifacts will be uploaded.
-          Same as the path argument in actions/upload-artifact@v4 (check docs for more info).
+        description: Path to upload as an artifact after the command runs
         required: false
         type: string
 
       git_ref:
-        description: |
-          Git reference to use for the build. Defaults to GITHUB_SHA of the event that triggered the workflow.
-          If using `push` or `workflow_dispatch` then you do not have to pass it as the correct revision is checked out.
-          Useful for other events like `workflow_run`, see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+        description: Git reference to use for bind mounts and cache rebuilds
         required: false
         type: string
 
 jobs:
-  build_and_run:
-    name: Build app image and run command
+  run_command:
+    name: Run app image command
     runs-on: ${{ inputs.runner }}
     timeout-minutes: ${{ inputs.timeout_minutes }}
 
@@ -176,9 +189,10 @@ jobs:
         with:
           ref: ${{ inputs.git_ref }}
 
-      - name: Build app image
-        uses: ./.github/actions/build-app-image
+      - name: Load app image
+        uses: ./.github/actions/load-app-image
         with:
+          image_artifact_name: ${{ inputs.image_artifact_name }}
           image_context: ${{ inputs.image_context }}
           image_dockerfile: ${{ inputs.image_dockerfile }}
           image_target: ${{ inputs.image_target }}
@@ -188,12 +202,18 @@ jobs:
           buildx_platforms: ${{ inputs.buildx_platforms }}
           aws_region: ${{ inputs.aws_region }}
           aws_role_to_assume: ${{ inputs.aws_role_to_assume }}
-          upload_image_artifact: 'false'
+
+      - name: Download input artifact
+        if: ${{ inputs.download_artifact_name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.download_artifact_name }}
+          path: ${{ inputs.download_artifact_path }}
 
       - name: Run specified command
         run: ${{ inputs.run_command }}
 
-      - name: Upload build artifacts
+      - name: Upload output artifact
         uses: actions/upload-artifact@v4
         if: ${{ inputs.artifact_path != '' }}
         with:

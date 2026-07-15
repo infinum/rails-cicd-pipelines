@@ -1,0 +1,144 @@
+name: Run app image command (lite)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      runner:
+        description: Set the runner for the workflow (eg. ubuntu-latest)
+        required: false
+        type: string
+        default: ubuntu-latest
+
+      timeout_minutes:
+        description: Workflow timeout
+        required: false
+        type: number
+        default: 30
+
+      image_artifact_name:
+        description: Artifact name produced by build-app-image
+        required: false
+        type: string
+        default: ''
+
+      image_target:
+        description: Docker build target when rebuilding from cache instead of loading an artifact
+        required: false
+        type: string
+
+      image_context:
+        description: Docker context when rebuilding from cache
+        required: false
+        type: string
+        default: '.'
+
+      image_dockerfile:
+        description: Path to Dockerfile when rebuilding from cache
+        required: false
+        type: string
+
+      image_tags:
+        description: Docker image tags when rebuilding from cache
+        required: false
+        type: string
+
+      image_build_args:
+        description: Docker build arguments when rebuilding from cache
+        required: false
+        type: string
+
+      image_secret_files:
+        description: Docker image build secret files when rebuilding from cache
+        required: false
+        type: string
+
+      aws_region:
+        description: AWS region for assuming a role when rebuilding from cache
+        required: false
+        type: string
+
+      aws_role_to_assume:
+        description: Role to be assumed for AWS authentication when rebuilding from cache
+        required: false
+        type: string
+
+      buildx_platforms:
+        description: List of the preferred platforms for Docker Buildx when rebuilding from cache
+        required: false
+        type: string
+
+      download_artifact_name:
+        description: Artifact to download before running the command
+        required: false
+        type: string
+        default: ''
+
+      download_artifact_path:
+        description: Destination path for the downloaded artifact
+        required: false
+        type: string
+        default: '.'
+
+      run_command:
+        description: Command to run after the image is loaded
+        required: true
+        type: string
+
+      artifact_name:
+        description: Name of the artifact to upload after the command runs
+        required: false
+        type: string
+        default: artifact
+
+      artifact_path:
+        description: Path to upload as an artifact after the command runs
+        required: false
+        type: string
+
+      git_ref:
+        description: Git reference to use for bind mounts and cache rebuilds
+        required: false
+        type: string
+
+jobs:
+  run_command:
+    name: Run app image command
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: Load app image
+        uses: ./.github/actions/load-app-image
+        with:
+          image_artifact_name: ${{ inputs.image_artifact_name }}
+          image_context: ${{ inputs.image_context }}
+          image_dockerfile: ${{ inputs.image_dockerfile }}
+          image_target: ${{ inputs.image_target }}
+          image_tags: ${{ inputs.image_tags }}
+          image_build_args: ${{ inputs.image_build_args }}
+          image_secret_files: ${{ inputs.image_secret_files }}
+          buildx_platforms: ${{ inputs.buildx_platforms }}
+          aws_region: ${{ inputs.aws_region }}
+          aws_role_to_assume: ${{ inputs.aws_role_to_assume }}
+
+      - name: Download input artifact
+        if: ${{ inputs.download_artifact_name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.download_artifact_name }}
+          path: ${{ inputs.download_artifact_path }}
+
+      - name: Run specified command
+        run: ${{ inputs.run_command }}
+
+      - name: Upload output artifact
+        uses: actions/upload-artifact@v4
+        if: ${{ inputs.artifact_path != '' }}
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifact_path }}

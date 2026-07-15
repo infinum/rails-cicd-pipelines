@@ -1,0 +1,113 @@
+name: Build app image
+description: Build a Docker image and optionally upload it as a workflow artifact
+
+inputs:
+  image_context:
+    description: Docker build context
+    required: false
+    default: '.'
+  image_dockerfile:
+    description: Path to Dockerfile
+    required: false
+    default: ''
+  image_target:
+    description: Docker build target stage
+    required: false
+    default: ''
+  image_tags:
+    description: Docker image tags
+    required: true
+  image_build_args:
+    description: Docker build arguments
+    required: false
+    default: ''
+  image_secret_files:
+    description: Docker build secret files
+    required: false
+    default: ''
+  buildx_platforms:
+    description: Preferred platforms for Docker Buildx
+    required: false
+    default: ''
+  aws_region:
+    description: AWS region for assuming a role
+    required: false
+    default: ''
+  aws_role_to_assume:
+    description: Role to be assumed for AWS authentication
+    required: false
+    default: ''
+  upload_image_artifact:
+    description: Upload the built image as a gzip tar artifact for other jobs
+    required: false
+    default: 'true'
+  image_artifact_name:
+    description: Artifact name for the saved Docker image
+    required: false
+    default: ci-docker-image
+
+outputs:
+  image_artifact_name:
+    description: Artifact name when upload_image_artifact is enabled
+    value: ${{ steps.image-artifact-name.outputs.name }}
+  image_tag:
+    description: Primary local image tag used for docker save/load
+    value: ${{ steps.image-tag.outputs.tag }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve image tag
+      id: image-tag
+      shell: bash
+      run: |
+        tag=$(echo "${{ inputs.image_tags }}" | awk '{print $1}')
+        echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+    - name: Configure AWS credentials
+      if: ${{ inputs.aws_role_to_assume != '' }}
+      uses: aws-actions/configure-aws-credentials@v5
+      with:
+        aws-region: ${{ inputs.aws_region }}
+        role-to-assume: ${{ inputs.aws_role_to_assume }}
+
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        platforms: ${{ inputs.buildx_platforms }}
+
+    - name: Build app image
+      uses: docker/build-push-action@v6
+      with:
+        builder: ${{ steps.buildx.outputs.name }}
+        context: ${{ inputs.image_context }}
+        file: ${{ inputs.image_dockerfile }}
+        target: ${{ inputs.image_target }}
+        push: false
+        load: true
+        tags: ${{ inputs.image_tags }}
+        build-args: ${{ inputs.image_build_args }}
+        secret-files: ${{ inputs.image_secret_files }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Save Docker image
+      if: ${{ inputs.upload_image_artifact == 'true' }}
+      shell: bash
+      run: |
+        docker save "${{ steps.image-tag.outputs.tag }}" | gzip > /tmp/ci-docker-image.tar.gz
+
+    - name: Upload Docker image artifact
+      if: ${{ inputs.upload_image_artifact == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.image_artifact_name }}
+        path: /tmp/ci-docker-image.tar.gz
+        retention-days: 1
+
+    - name: Set image artifact output
+      id: image-artifact-name
+      if: ${{ inputs.upload_image_artifact == 'true' }}
+      shell: bash
+      run: echo "name=${{ inputs.image_artifact_name }}" >> "$GITHUB_OUTPUT"

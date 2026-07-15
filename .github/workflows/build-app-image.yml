@@ -1,0 +1,118 @@
+name: Build app image
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      runner:
+        description: Set the runner for the workflow (eg. ubuntu-latest)
+        required: false
+        type: string
+        default: ubuntu-latest
+
+      timeout_minutes:
+        description: Workflow timeout
+        required: false
+        type: number
+        default: 30
+
+      image_target:
+        description: Set the target build stage for the image (eg. ci or deploy)
+        required: false
+        type: string
+
+      image_context:
+        description: Docker context
+        required: false
+        type: string
+        default: '.'
+
+      image_dockerfile:
+        description: Path to Dockerfile
+        required: false
+        type: string
+
+      image_tags:
+        description: Docker image tags
+        required: true
+        type: string
+
+      image_build_args:
+        description: Docker build arguments
+        required: false
+        type: string
+
+      image_secret_files:
+        description: Docker image build secret files
+        required: false
+        type: string
+
+      aws_region:
+        description: AWS region for assuming a role
+        required: false
+        type: string
+
+      aws_role_to_assume:
+        description: Role to be assumed for AWS authentication
+        required: false
+        type: string
+
+      buildx_platforms:
+        description: List of the preferred platforms for Docker Buildx
+        required: false
+        type: string
+
+      upload_image_artifact:
+        description: Upload the built image as a gzip tar artifact for other jobs
+        required: false
+        type: boolean
+        default: true
+
+      image_artifact_name:
+        description: Artifact name for the saved Docker image
+        required: false
+        type: string
+        default: ci-docker-image
+
+      git_ref:
+        description: Git reference to use for the build
+        required: false
+        type: string
+
+    outputs:
+      image_artifact_name:
+        description: Artifact name when upload_image_artifact is enabled
+        value: ${{ jobs.build_image.outputs.image_artifact_name }}
+      image_tag:
+        description: Primary local image tag used for docker save/load
+        value: ${{ jobs.build_image.outputs.image_tag }}
+
+jobs:
+  build_image:
+    name: Build app image
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    outputs:
+      image_artifact_name: ${{ steps.build.outputs.image_artifact_name }}
+      image_tag: ${{ steps.build.outputs.image_tag }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: Build app image
+        id: build
+        uses: ./.github/actions/build-app-image
+        with:
+          image_context: ${{ inputs.image_context }}
+          image_dockerfile: ${{ inputs.image_dockerfile }}
+          image_target: ${{ inputs.image_target }}
+          image_tags: ${{ inputs.image_tags }}
+          image_build_args: ${{ inputs.image_build_args }}
+          image_secret_files: ${{ inputs.image_secret_files }}
+          buildx_platforms: ${{ inputs.buildx_platforms }}
+          aws_region: ${{ inputs.aws_region }}
+          aws_role_to_assume: ${{ inputs.aws_role_to_assume }}
+          upload_image_artifact: ${{ inputs.upload_image_artifact }}
+          image_artifact_name: ${{ inputs.image_artifact_name }}
