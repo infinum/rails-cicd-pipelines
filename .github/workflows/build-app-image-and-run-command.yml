@@ -37,6 +37,17 @@ on:
         required: false
         type: string
 
+      # See: https://mcr.microsoft.com/en-us/product/mssql/server/about
+      mssql_version:
+        description: MSSQL Server version for running tests (eg. 2022-latest). Uses the sa user.
+        required: false
+        type: string
+
+      mssql_sa_password:
+        description: MSSQL sa user password (must meet SQL Server's password complexity requirements)
+        required: false
+        type: string
+
       runner:
         description: Set the runner for the workflow (eg. ubuntu-20.04)
         required: false
@@ -174,6 +185,19 @@ jobs:
           --health-retries=5
         ports:
           - 3306:3306
+
+      mssql:
+        image: ${{ inputs.mssql_version && format('mcr.microsoft.com/mssql/server:{0}', inputs.mssql_version) }}
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: ${{ inputs.mssql_sa_password }}
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 1433:1433
 
       redis:
         image: ${{ inputs.redis_image && format('redis:{0}', inputs.redis_image) }}
